@@ -36,6 +36,7 @@ Options:
   -b --black=<bfile>  Specify 0 or more files containing black listed IPs.
   -i --input=<ifile>  Specify 0 or more input files [default: stdin]
                       If any are provided, stdin is ignored.
+                      These are typically log files but don't have to be.
   -o --output=<ofile>  Specify output file.  [default: stdout]
                        If none is provided, output goes to stdout.
 
@@ -63,7 +64,7 @@ from docopt import docopt
 import sys
 import akparser3
 
-args = docopt(__doc__, version="logparser.py v0.0")
+args = docopt(__doc__, version="logparser.py v0.1.0")
 
 # input file type (itype) can be 'lf', 'wf', or 'bf' (input, white, black)
 arg_file_types = [ "--input", "--white", "--black" ]
@@ -93,10 +94,13 @@ class IP_Class (object):
 
     def __init__(self, other=None):
         self.n = 0
-        self.other = other
+        self.other = {}   # Dictionary to be keyed by an item
+                          # found in akparser3.line_types
 
     def __repr__(self):
-        return "Report: n= %d."%(self.n, ) 
+        return
+        return """Report: n= %d and 'other' is as follows...
+            %s"""%(self.n, self.other) 
 
     def increment(self):
         self.n += 1
@@ -105,7 +109,18 @@ class IP_Class (object):
         return self.n
 
     def add_other(self, args):
-        pass
+        """ This method is set up to deal with the resulets of
+        akparse3.get_log_info(line) which returns a tuple:
+        (        ,  ) """
+        junk = self.other.setdefault(args[0], [])
+        self.other[args[0]].append(args[1])
+
+    def keys(self):
+        return self.other.keys()
+
+    def values(self, key):
+        return(self.other[key])
+
 
 def process(line, f_type, f_name):
     ip_list = akparser3.list_of_IPs(line)
@@ -117,15 +132,21 @@ def process(line, f_type, f_name):
             junk = f_status_dic[f_type].setdefault(f_name, 0)
             f_status_dic[f_type][f_name] += 1
             
-            junk = ipDic.setdefault(f_type, {})
+            junk = ipDic.setdefault(ip, {})
+            junk = ipDic[ip].setdefault(f_type, {})
             if f_type==lf:
-                junk = ipDic[f_type].setdefault(ip, 
-                                    IP_Class(other=None)  )
-                ipDic[f_type][ip].increment()
-                ipDic[f_type][ip].add_other(None)
+                other = akparser3.get_log_info(line)
+                junk = ipDic[ip][f_type].setdefault(f_name, IP_Class() )
+                ipDic[ip][f_type][f_name].increment()
+                if other:   # Recognized as being one
+                            # of akparser3.line_types
+                    ipDic[ip][f_type][f_name].add_other(other)
+                else:
+                    ipDic[ip][f_type][f_name].add_other(('solo_IP', 
+                                                             '-', ))
             else:   # f_type is white or black file.
-                junk = ipDic[f_type].setdefault(ip, 0)
-                ipDic[f_type][ip] += 1
+                junk = ipDic[ip][f_type].setdefault(f_name, 0)
+                ipDic[ip][f_type][f_name] += 1
 
 # The following if/else statement might (after debugging) be better placed 
 # at the end of the code, just before the outF.close() statement.
@@ -173,12 +194,24 @@ for key in f_status_dic.keys():
 print('End of f_status_dic report.\n')
 print('\n==============================================\n')
 
-for key in ipDic.keys():
-    print("Values for first level key '%s' in ipDic:"%(key, ) )
-    for k in ipDic[key].keys():
-        # print("Type of ipDic[key][key] is: %s."%\
-        #                     (type(ipDic[key][k]), )  )
-        print("\t%s: %s"%(k, ipDic[key][k], ))
+ips = ipDic.keys()
+for ip in ips:
+    print("Values for ip key '%s' in ipDic:"%(ip, ) )
+    f_types = ipDic[ip].keys()
+    for f_type in f_types:
+        print("    Values for f_type '%s' in ipDic:"%(f_type, ) )
+        f_names = ipDic[ip][f_type].keys()
+        for f_name in f_names:
+            print("      Values for f_name '%s' are: "%(f_name, ))
+            if f_type == lf:
+                line_types = ipDic[ip][f_type][f_name].keys()
+                for line_type in line_types:
+                    print("\t%s: "%(line_type, ))
+                    print("\t  %s"%\
+                        (ipDic[ip][f_type][f_name].values(line_type),) )
+                    print()
+            else:
+                print("    Count is %s."%(ipDic[ip][f_type][f_name], )  )
 
     print('-----------------------------------------------')
 
