@@ -17,9 +17,8 @@ module invaluable for setting up a usage statement and capturing command
 line arguments, from an **SPoL** (Single Point of Light- Described by 
 Eric Raymond in [**The Art of Unix Programming**](http://www.amazon.com/Programming-Addison-Wesley-Professional-Computng-Series/dp/0131429019).)
 
-The input side seems to be working satisfactorily but so far, the only
-output is test code to check that the input has been captured correctly. 
-Code to present the data in keeping with specified command line options
-has yet to be written.  In other words, this is still a work in
-progress.  Comments, suggestions and even just plain criticisms
+Although not extensively tested, the code does appear to be functioning in
+it's current (v0.2) iteration.
+
+Comments, suggestions and even just plain criticisms
 welcomed. (alex at kleider dot ca)

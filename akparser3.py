@@ -7,21 +7,9 @@
 A module to support parsing of log files.
 
 * website?     # Perhaps some day.
-* Repository: https://github.com/..  # Not pushed to github as of yet.
+* Repository: https://github.com/alexKleider/logparser
 * Licensed under terms of GPL latest version.
 * Copyright (c) 2014 Alex Kleider, alex@kleider.ca
-
-The code used in this module was initially developed here:
-~/Python/RegEx/logparse.py
-It is expected that this module can eventually be a replacement
-and logparse.py can be deleted.  Note that the API has changed
-drastically.
-
-I have tried several ways of implementing the ip_info() function.
-See ip_json.py, xparse.py and ip_xml.py if interested.
-In the end I decided that returning a dictionary (rather than a 
-named tuple) would be best and that the easyest way to create such 
-a dictionary would be using reg ex.
 
 Parses log files:  To date, can handle:
         auth.log   and 
@@ -49,7 +37,7 @@ Usage:
         #     line_type: one of the strings provided in line_types.
         #     data_gleaned: a list, possibly empty.
         #          Currently there is never >1 item in the list.
-        # Returns 'None' if line is not a recognized log entry.
+        # Returns None if line is not a recognized log entry.
     get_header_text(line_type)  
         # line_type: one of the strings provided in line_types.
         # Returns a string thus providing a mechanism for providing 
@@ -66,17 +54,20 @@ Usage:
         # Might have to add code to add support for other log file
         # types if their dates are presented differently. 
         # Returns None if parsing is unsuccessful.
-"""
-
+    sortable_ip(ip)
+        # Useful as a key function for sorting.
+        # Quietly returns None if parameter is bad.
+"""#
 __all_ = ['list_of_IPs', 
           'ip_info',
           'line_types',
           'get_log_info',
           'get_header_text',
-          'sortable_date'
+          'sortable_date',
+          'sortable_ip'
           ]
-__version__ = '0.1.0'
-#
+__version__ = '0.2.0'
+
 import re
 import urllib.request
 import datetime
@@ -113,7 +104,7 @@ header_text["disconnect"] = \
 re_format["listening"] = r""" Server listening on (?P<listener>.+)"""
 header_text["listening"] = "'auth.log' reporting 'Server listening on's:"
 
-
+#
 # fail2ban.log lines:
 re_format["ban"] = \
     r"fail2ban\.actions: WARNING \[ssh\] Ban "
@@ -123,7 +114,7 @@ re_format["unban"] = \
 header_text["unban"] = "'fail2ban' reporting 'unban's:"
 re_format["already_banned"] = r" already banned$"
 header_text["already_banned"] = "'fail2ban' reporting 'already banned's:"
-#  SECTION which DEPENDS on 'line_types' CONTINUES...
+# SECTION which DEPENDS on 'line_types' CONTINUES...
 for key in line_types:
     re_search4[key] = re.compile(re_format[key]).search
 
@@ -151,17 +142,15 @@ def get_log_info(line):
     for line_type in line_types:  # Assume a line can only be of 1 type.
         search_result = re_search4[line_type](line)
         if search_result:
+            data_gleaned = []
             info_provided = keys_provided[line_type]
             if info_provided:  # Possibly empty list, unlikely >1 item.
-                data_gleaned = []
                 for item in info_provided:
                     data_gleaned.append(search_result.groups(item))
-                return (line_type, data_gleaned, )
-            else:
-                return (line_type, ["-"], )
+            return (line_type, data_gleaned, )
     return  # Redundant but makes the point that None is returned if
             # the line is not recognized as a known log line type.
-#####################################################################
+##################################################################
 
 # To identify IP addresses (ipv4.)
 ip_exp =\
@@ -173,7 +162,6 @@ list_of_IPs = re.compile(ip_exp, re.VERBOSE).findall
 # list_of_Ips(line) returns a list (could be empty) of IP addresses.
 
 #################################################################
-
 # To get demographic info regarding an IP address:
 
 url_format_str = \
@@ -229,8 +217,18 @@ THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
             "Lon" : "<failed>",
             "IP" : "<request failed>"         }
 # End of IP demographics gathering section.
-
 ##################################################################
+
+def sortable_ip(ip):
+    """Takes am IP address of the form 50.143.75.105
+    and returns it in the form 050.143.075.105.
+    ... useful as a key function for sorting.
+    Quietly returns None if parameter is bad."""
+    parts = ip.strip().split('.')
+    if not len(parts)==4:
+        return None
+    else: 
+        return "{0[0]:0>3}.{0[1]:0>3}.{0[2]:0>3}.{0[3]:0>3}".format(parts)
 
 # Some date routines to provide sortable_date().
 
@@ -254,9 +252,7 @@ months = {"Jan" : 1, "Feb" : 2, "Mar" : 3, "Apr" : 4,
 
 def sortable_date(log_line):
     """ Needs to handle all types of log lines. 
-        currently can handle those of:
-            auth.log 
-            fail2ban. 
+        Currently can handle those of: auth.log fail2ban. 
         Returns None if parsing is unsuccessful."""
     try:   # auth.log 
         l = log_line[:15].split()
@@ -273,7 +269,6 @@ def sortable_date(log_line):
     except:
         return
 #
-
 if __name__=="__main__":
     print("Running Python3 script: 'akparser3.py'.......")
     import sys
@@ -330,3 +325,55 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
 
 ## [1]  SPoL  (Single Point of Light)
 ##      See: The Art of Unix Programming by Eric S. Raymond
+#
+    addrs = """
+5.135.155.179
+14.139.243.82
+27.50.21.157
+37.60.178.123
+50.143.75.105
+61.147.70.29
+61.147.70.122
+61.147.70.123
+61.147.107.99
+61.147.107.120
+61.160.213.174
+61.160.215.14
+61.160.215.85
+61.160.215.116
+61.174.51.205
+61.174.51.213
+61.174.51.221
+80.241.222.46
+86.176.232.231
+89.42.25.185
+91.236.116.157
+95.167.180.114
+96.44.135.99
+112.122.11.127
+115.236.185.171
+117.41.185.20
+117.41.186.238
+117.239.103.116
+120.236.0.202
+121.52.215.143
+137.132.82.196
+173.228.54.129
+179.89.26.218
+187.44.1.153
+187.174.116.250
+198.2.253.3
+198.15.141.158
+198.74.125.207
+199.71.214.66
+200.68.73.85
+202.85.221.153
+203.112.72.19
+204.14.156.167
+205.51.174.61
+""".strip()
+    addrs = addrs.split()
+
+    for ip in addrs:
+        print("  {0: >16}  converts to '{1}'.".format(ip, sortable_ip(ip) ) )
+
