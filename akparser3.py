@@ -66,7 +66,7 @@ __all_ = ['list_of_IPs',
           'sortable_date',
           'sortable_ip'
           ]
-__version__ = '0.2.0'
+__version__ = '0.2.1'
 
 import re
 import urllib.request
@@ -136,8 +136,8 @@ def get_header_text(line_type):
 
 def get_log_info(line):
     """Returns 'None' if not a recognized log entry  or
-    a tuple: line_type, data_gleaned.  The later is a list,
-                         possibly empty, so far not more than one item.
+    a tuple: line_type, data_gleaned.  The later is a list if
+    there is data gleaned, None if not.
     """
     for line_type in line_types:  # Assume a line can only be of 1 type.
         search_result = re_search4[line_type](line)
@@ -147,6 +147,8 @@ def get_log_info(line):
             if info_provided:  # Possibly empty list, unlikely >1 item.
                 for item in info_provided:
                     data_gleaned.append(search_result.groups(item))
+            else:
+                data_gleaned = None
             return (line_type, data_gleaned, )
     return  # Redundant but makes the point that None is returned if
             # the line is not recognized as a known log line type.
@@ -193,10 +195,16 @@ Depends on http://api.hostip.info (which returns the following:
 38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
 THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
 """
-#   try:  # 16 lines in this try statement.
-    # A file-like object is returned by the request:
-    f_response =  urllib.request.urlopen(url_format_str %\
-                                   (ip_address, ))
+    try:  # 16 lines in this try statement.
+        # A file-like object is returned by the request:
+        f_response =  urllib.request.urlopen(url_format_str %\
+                                       (ip_address, ))
+    except:   ### FIND OUT SPECIFIC ERROR ###
+        return {"Country" : "<request failed>",
+                "City" : "<request failed>",
+                "Lat" : "<failed>",
+                "Lon" : "<failed>",
+                "IP" : "<request failed>"         }
     ip_metadata = str(f_response.info()) # The returned Headers.
     encoding_group = get_encoding(ip_metadata) # Using my re function.
     encoding = encoding_group.group("charset")
@@ -210,12 +218,6 @@ THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
             "Lat" : info.group("lat"),
             "Lon" : info.group("lon"),
             "IP" : info.group("ip")            }
-#   except:
-    return {"Country" : "<request failed>",
-            "City" : "<request failed>",
-            "Lat" : "<failed>",
-            "Lon" : "<failed>",
-            "IP" : "<request failed>"         }
 # End of IP demographics gathering section.
 ##################################################################
 

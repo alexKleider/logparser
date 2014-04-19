@@ -20,5 +20,9 @@ Eric Raymond in [**The Art of Unix Programming**](http://www.amazon.com/Programm
 Although not extensively tested, the code does appear to be functioning in
 it's current (v0.2) iteration.
 
+Although I'm less taken by the need to do so now, at one time this seemed
+to have some apeal:
+http://docs.python.org/3/library/collections.html#collections.Counter
+
 Comments, suggestions and even just plain criticisms
 welcomed. (alex at kleider dot ca)
