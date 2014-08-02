@@ -9,13 +9,13 @@ A module to support parsing of log files.
 * website?     # Perhaps some day.
 * Repository: https://github.com/alexKleider/logparser
 * Licensed under terms of GPL latest version.
-* Copyright (c) 2014 Alex Kleider, alex@kleider.ca
+* Author: Alex Kleider, alex@kleider.ca 2014
 
 Parses log files:  To date, can handle:
         auth.log   and 
         fail2ban.log  .
 Other logs can be added by request to author. (See (c) statement.)
-#
+
 Usage: 
     import akparser3
     ...
@@ -43,6 +43,9 @@ Usage:
         # Returns a string thus providing a mechanism for providing 
         # line_type specific information: this might be useful when 
         # presenting output.
+    get_log_files(dir_iterable)
+        # accepts an iterable of directory names.
+        # returns a list of all file names containing '.log'.
     sortable_date(line)
         # Deals with two issues:
         #   1. Date representations differ.
@@ -57,18 +60,22 @@ Usage:
     sortable_ip(ip)
         # Useful as a key function for sorting.
         # Quietly returns None if parameter is bad.
-"""#
-__all_ = ['list_of_IPs', 
+
+"""
+
+__all__ = ['list_of_IPs', 
           'ip_info',
           'line_types',
           'get_log_info',
           'get_header_text',
+          'get_log_files',
           'sortable_date',
           'sortable_ip'
           ]
-__version__ = '0.2.1'
+__version__ = '0.2.5'
 
 import re
+import os
 import urllib.request
 import datetime
 
@@ -85,10 +92,10 @@ keys_provided = {}     # } found in
 header_text = {}       # } 'line_types'.
 
 # Expressions relevant to auth.log:
-re_format["invalid_user"] =\
+re_format["invalid_user"] = \
     r"""Invalid user (?P<user>\S+) from """
 header_text["invalid_user"] = "'auth.log' reporting 'invalid user's:"
-re_format["no_id"] =\
+re_format["no_id"] = \
     r"""Did not receive identification string from \S+"""
 header_text["no_id"] = "'auth.log' reporting 'no id's:"
 re_format["break_in"] = r"POSSIBLE BREAK-IN ATTEMPT!"
@@ -104,7 +111,6 @@ header_text["disconnect"] = \
 re_format["listening"] = r""" Server listening on (?P<listener>.+)"""
 header_text["listening"] = "'auth.log' reporting 'Server listening on's:"
 
-#
 # fail2ban.log lines:
 re_format["ban"] = \
     r"fail2ban\.actions: WARNING \[ssh\] Ban "
@@ -132,6 +138,7 @@ keys_provided["already_banned"] = []
 # END of SECTION which DEPENDS on 'line_types'.
 
 def get_header_text(line_type):
+    """Return header text appropriate to line type."""
     return header_text[line_type]
 
 def get_log_info(line):
@@ -152,10 +159,10 @@ def get_log_info(line):
             return (line_type, data_gleaned, )
     return  # Redundant but makes the point that None is returned if
             # the line is not recognized as a known log line type.
-##################################################################
+#################################################################
 
 # To identify IP addresses (ipv4.)
-ip_exp =\
+ip_exp = \
 r"""
 \b
 \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
@@ -185,26 +192,29 @@ info_exp = r"""
     IP:[ ](?P<ip>.*)
         """
 get_IP_demographics = re.compile(info_exp, re.VERBOSE).search
-#
+
 def ip_info(ip_address):
     """
-Returns a dictionary keyed by Country, City, Lat, Lon and IP.
+Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
 
 Depends on http://api.hostip.info (which returns the following:
 'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
 38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
 THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
+err will empty string unless there is an urllib.request.URLError
+in which case, it will contain the error and the other values will
+be empty strings.
 """
     try:  # 16 lines in this try statement.
         # A file-like object is returned by the request:
         f_response =  urllib.request.urlopen(url_format_str %\
                                        (ip_address, ))
-    except:   ### FIND OUT SPECIFIC ERROR ###
-        return {"Country" : "<request failed>",
-                "City" : "<request failed>",
-                "Lat" : "<failed>",
-                "Lon" : "<failed>",
-                "IP" : "<request failed>"         }
+    except urllib.request.URLError as err_report: 
+        return {"Country" : "",
+                "City" : "",
+                "Lon" : "",
+                "IP" : "",
+                "err" : err_report              }
     ip_metadata = str(f_response.info()) # The returned Headers.
     encoding_group = get_encoding(ip_metadata) # Using my re function.
     encoding = encoding_group.group("charset")
@@ -217,9 +227,10 @@ THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
             "City" : info.group("city"),
             "Lat" : info.group("lat"),
             "Lon" : info.group("lon"),
-            "IP" : info.group("ip")            }
+            "IP" : info.group("ip"),
+            "err" : ""                           }
 # End of IP demographics gathering section.
-##################################################################
+#################################################################
 
 def sortable_ip(ip):
     """Takes am IP address of the form 50.143.75.105
@@ -270,7 +281,28 @@ def sortable_date(log_line):
             (l[0], l[1], l[2], log_line[11:19], )
     except:
         return
-#
+
+def get_log_files(dir_iterable):
+    """Takes an iterable, assumed to be a list of directories,
+    and traverses these directories recursively returning a
+    a list of all the file names containing the string '.log'. 
+    The heavy lifting is done by os.walk which silently does 
+    nothing if given a directory that does not exist.
+    """
+    log_files = []
+    for directory in dir_iterable:
+        for dir_name, dir_list, file_list in os.walk(directory):
+            for file_name in file_list:
+                if '.log' in file_name:
+                    d_n = dir_name
+                    while d_n[-1:]=='/':  # To eliminate double slashes.
+                        d_n = d_n[0:-1]
+                    log_files.append('{0}/{1}'.format(d_n, file_name))
+
+                    #print("Directory '{0}':".format(item[0]))
+                    #print("\t{0}".format(l1))
+    return log_files
+
 if __name__=="__main__":
     print("Running Python3 script: 'akparser3.py'.......")
     import sys
@@ -302,24 +334,29 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
             target = f.read()
     else:
         target = t2
-#
+
     n = 0
     for line in target.split('\n'):
-      if line:
-        n += 1
-        print()
-        print("Analysing line #%03d:\n%s" % (n, line, ))
-        print("  Sortable date: %s." % (sortable_date(line), ))
-        ip = list_of_IPs(line)
-        info = get_log_info(line)
-        print("      Information gleaned: %s"%(info, ) )
+        if line:
+            n += 1
+            print()
+            print("Analysing line #%03d:\n%s" % (n, line, ))
+            print("  Sortable date: %s." % (sortable_date(line), ))
+            ip = list_of_IPs(line)
+            info = get_log_info(line)
+            print("      Information gleaned: %s"%(info, ) )
 
-        if ip: # The following 'exercises' IP_info() """
-            for addr in ip:
-                response = ip_info(addr) 
-                print("""    IP address is %(IP)s:
-        Country/City: %(Country)s  %(City)s.
-        Lat/Long: %(Lat)s/%(Lon)s""" % response)
+            if ip: # The following 'exercises' IP_info() """
+                for addr in ip:
+                    response = ip_info(addr) 
+                    if response['err']:
+                        print\
+                        ("Attempt to retrieve demographics failed with '{0}'."\
+                        .format(response['err']) )
+                    else:
+                        print("""    IP address is %(IP)s:
+            Country/City: %(Country)s  %(City)s.
+            Lat/Long: %(Lat)s/%(Lon)s""" % response) 
 
 #   print("""    IP address is %(IP)s:
 #       Country: %(Country)s;  City: %(City)s.
@@ -327,7 +364,7 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
 
 ## [1]  SPoL  (Single Point of Light)
 ##      See: The Art of Unix Programming by Eric S. Raymond
-#
+
     addrs = """
 5.135.155.179
 14.139.243.82
@@ -379,3 +416,9 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
     for ip in addrs:
         print("  {0: >16}  converts to '{1}'.".format(ip, sortable_ip(ip) ) )
 
+    # Exercise get_log_files(iterable_of_directories)...
+    #params = ("/home/alex/Python/Parse/Logparse/", )
+    params = ("Logs/", )
+    log_files = get_log_files(params)
+    for log_file in log_files:
+        print(log_file)
