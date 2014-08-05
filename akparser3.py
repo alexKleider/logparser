@@ -14,35 +14,38 @@ A module to support parsing of log files.
 Parses log files:  To date, can handle:
         auth.log   and 
         fail2ban.log  .
-Other logs can be added by request to author. (See (c) statement.)
+Other logs can be added by request to author.
 
 Usage: 
     import akparser3
     ...
     Provides the following:  i.e. Here is the API.
 
-    ip_info(ip_address)
-        # Returns   a dictionary keyed by
-        # 'Country', 'City', 'Lat', 'Lon', 'IP'
-        # TO DO: provide error checking.
+    Ip_Demographics
+        A class, which provides the following:
+    Ip_Demographics.ip_info(ip_address)
+        Returns   a dictionary keyed by
+            'encoding', 'err', 'IP',
+            'Country', 'Region', 'City', 'Lat', 'Lon',
+            'ISP', 'OrgName'
     list_of_IPs(line)
-        # An re.compile(..).findall function
-        # Returns a list.  (i.e. Allows input to contain >1 IP/line.)
-        # Generally log files report only one IP per line unless a 
-        # reverse look up is provided in which case the second one
-        # is the same IP but with the dotted quads in reverse order.
-    line_types: a list of strings. Provides our SPoL [1]
+        An re.compile(..).findall function
+        Returns a list.  (i.e. Allows input to contain >1 IP/line.)
+        Generally log files report only one IP per line unless a 
+        reverse look up is provided in which case the second one
+        is the same IP but with the dotted quads in reverse order.
+    line_types: a list of strings. Provides our SPoT (or DRY.)
     get_log_info(line)
-        # Returns a tuple: line_type, data_gleaned.  
-        #     line_type: one of the strings provided in line_types.
-        #     data_gleaned: a list, possibly empty.
-        #          Currently there is never >1 item in the list.
-        # Returns None if line is not a recognized log entry.
+        Returns a tuple: line_type, data_gleaned.  
+            line_type: one of the strings provided in line_types.
+            data_gleaned: a list, possibly empty.
+                 Currently there is never >1 item in the list.
+        Returns None if line is not a recognized log entry.
     get_header_text(line_type)  
-        # line_type: one of the strings provided in line_types.
-        # Returns a string thus providing a mechanism for providing 
-        # line_type specific information: this might be useful when 
-        # presenting output.
+        line_type: one of the strings provided in line_types.
+        Returns a string thus providing a mechanism for providing 
+        line_type specific information: this might be useful when 
+        presenting output.
     get_log_files(dir_iterable)
         # accepts an iterable of directory names.
         # returns a list of all file names containing '.log'.
@@ -64,7 +67,7 @@ Usage:
 """
 
 __all__ = ['list_of_IPs', 
-          'ip_info',
+          'Ip_Demographics',
           'line_types',
           'get_log_info',
           'get_header_text',
@@ -72,7 +75,7 @@ __all__ = ['list_of_IPs',
           'sortable_date',
           'sortable_ip'
           ]
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 import re
 import os
@@ -173,64 +176,109 @@ list_of_IPs = re.compile(ip_exp, re.VERBOSE).findall
 #################################################################
 # To get demographic info regarding an IP address:
 
-url_format_str = \
-"http://api.hostip.info/get_html.php?ip=%s&position=true"
+class Ip_Demographics(object):
 
-encoding_exp = r"\bcharset=(?P<charset>\S+)"
-get_encoding = re.compile(encoding_exp).search
+    default_url = 1
 
-info_exp = r"""
-    Country:[ ](?P<country>.*)
-    [\n]
-    City:[ ](?P<city>.*)
-    [\n]
-    [\n]
-    Latitude:[ ](?P<lat>.*)
-    [\n]
-    Longitude:[ ](?P<lon>.*)
-    [\n]
-    IP:[ ](?P<ip>.*)
+    default_encoding = "utf-8"
+    charset_re = r"""\bcharset="(?P<encoding>[-\w]+)"""
+    get_encoding = re.compile(charset_re).search
+
+    urls = ("hostip",
+            "addgadgets",
+            )
+
+    url_dic = {\
+        urls[0] : \
+            "http://api.hostip.info/get_html.php?ip={0}&position=true",
+        urls[1] : \
+            "http://addgadgets.com/ipaddress/index.php?ipaddr={0}"
+        }
+
+#url_format_str = \
+#"http://api.hostip.info/get_html.php?ip={0}&position=true"
+
+    info_re_dic = {\
+        urls[0] : r"""
+            Country:[ ](?P<country>.*) [\n]
+            City:[ ](?P<city>.*) [\n] [\n]
+            Latitude:[ ](?P<lat>.*) [\n]
+            Longitude:[ ](?P<lon>.*) [\n]
+            IP:[ ](?P<ip>.*)
+            """                ,
+        urls[1] : r"""
+            \bcharset="(?P<encoding>[-\w]+)" .+?
+            (?P<IP>[0-9]{1,3}(?:[.][0-9]{1,3}){3}) .+?
+            Country:&nbsp;</td><td> (?P<Country>[ \w]+) .+?
+            Region:&nbsp;</td><td> (?P<Region>[ \w]+) .+?
+            City:&nbsp;</td><td> (?P<City>[ \w]+) .+?
+            Latitude:&nbsp;</td><td> (?P<Lat>[-]?[.\d]+) .+?
+            Longitude:&nbsp;</td><td> (?P<Lon>[-]?[.\d]+) .+?
+            ISP[ ]name:&nbsp;</td><td> (?P<ISP>[ .\w]+) .+?
+            Organization[ ]name:&nbsp;</td><td> (?P<OrgName>[ .\w]+)
+            """ }
+
+    get_demographics_dic = {\
+        urls[0] : re.compile(info_re_dic[urls[0]],
+                            re.VERBOSE + re.DOTALL),
+        urls[1] : re.compile(info_re_dic[urls[1]],
+                            re.VERBOSE + re.DOTALL)
+                            }
+    demo_keys = ('encoding', 'err', 'IP',
+        'Country', 'Region', 'City', 'Lat', 'Lon',
+        'ISP', 'OrgName', )
+
+
+
+    def __init__(self, url=default_url):
+
+        self.url_template = Ip_Demographics.url_dic[\
+                                        Ip_Demographics.urls[url]]
+        self.demographics_pattern = re.compile(\
+            Ip_Demographics.info_re_dic[Ip_Demographics.urls[url]],
+            re.VERBOSE + re.DOTALL)
+
+    def ip_info(self, ip_address):
         """
-get_IP_demographics = re.compile(info_exp, re.VERBOSE).search
+    Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
 
-def ip_info(ip_address):
+    Depends on http://api.hostip.info (which returns the following:
+    'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
+    38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
+    THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
+    err will empty string unless there is an urllib.request.URLError
+    in which case, it will contain the error and the other values will
+    be empty strings.
     """
-Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
+        ret = {}
+        for key in Ip_Demographics.demo_keys:
+            ret[key] = ""
+        try:  
+            url_response = urllib.request.urlopen(\
+                self.url_template.format(ip_address))
+        except urllib.request.URLError as err_report: 
+            ret['err'] = err_report
+            return ret
 
-Depends on http://api.hostip.info (which returns the following:
-'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
-38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
-THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
-err will empty string unless there is an urllib.request.URLError
-in which case, it will contain the error and the other values will
-be empty strings.
-"""
-    try:  # 16 lines in this try statement.
-        # A file-like object is returned by the request:
-        f_response =  urllib.request.urlopen(url_format_str %\
-                                       (ip_address, ))
-    except urllib.request.URLError as err_report: 
-        return {"Country" : "",
-                "City" : "",
-                "Lon" : "",
-                "IP" : "",
-                "err" : err_report              }
-    ip_metadata = str(f_response.info()) # The returned Headers.
-    encoding_group = get_encoding(ip_metadata) # Using my re function.
-    encoding = encoding_group.group("charset")
-
-    ip_demographics = f_response.read()  # The returned Data.
-    ip_demographics = ip_demographics.decode(encoding,
-                                            "backslashreplace.")
-    info = get_IP_demographics(ip_demographics)
-    return {"Country" : info.group("country"),
-            "City" : info.group("city"),
-            "Lat" : info.group("lat"),
-            "Lon" : info.group("lon"),
-            "IP" : info.group("ip"),
-            "err" : ""                           }
+        ip_demographics = url_response.read()  # The returned Data.
+        data  = ip_demographics.decode(\
+            Ip_Demographics.default_encoding, "backslashreplace.")
+        encoding = \
+            Ip_Demographics.get_encoding(data).group('encoding')
+        if not encoding:
+            encoding = Ip_Demographics.default_encoding
+        if encoding != Ip_Demographics.default_encoding:
+            data  = ip_demographics.decode(\
+                                    encoding, "backslashreplace.")
+        info = self.demographics_pattern.search(data)
+        if info:
+            for key in Ip_Demographics.demo_keys:
+                try:
+                    ret[key] = info.group(key)
+                except IndexError:
+                    pass
+        return ret
 # End of IP demographics gathering section.
-#################################################################
 
 def sortable_ip(ip):
     """Takes am IP address of the form 50.143.75.105
@@ -335,6 +383,7 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
     else:
         target = t2
 
+    demo_getter = Ip_Demographics(1)
     n = 0
     for line in target.split('\n'):
         if line:
@@ -343,12 +392,13 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
             print("Analysing line #%03d:\n%s" % (n, line, ))
             print("  Sortable date: %s." % (sortable_date(line), ))
             ip = list_of_IPs(line)
+            ###############
             info = get_log_info(line)
             print("      Information gleaned: %s"%(info, ) )
 
             if ip: # The following 'exercises' IP_info() """
                 for addr in ip:
-                    response = ip_info(addr) 
+                    response = demo_getter.ip_info(addr) 
                     if response['err']:
                         print\
                         ("Attempt to retrieve demographics failed with '{0}'."\
