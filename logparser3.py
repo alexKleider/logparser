@@ -36,10 +36,10 @@ Options:
   -i --input=<ifile>  Specify 0 or more input files [default: sys.stdin]
                       If any are provided, stdin is ignored.
                       These are typically log files but don't have to be.
-  -l --logdir=<dir>   Specify 0 or more directories from which to include
-                      log files (any file with 'log' in its name.) These
-                      files will be appended to the list of files
-                      specified by the '--input' option.
+                      If a specified file is a directory, all files
+                      with names ending in the suffix '.log' 
+                      beneath that directory are considered as though
+                      separately specified.
   -o --output=<ofile>  Specify output file.  [default: stdout]
                        If none is provided, output goes to stdout.
   -f --frequency   Sort output by frequency of appearance of IPs
@@ -63,13 +63,20 @@ If this scrolls too much, try piping to pager:
 """
 ######  END of USAGE statement.  ######
 import sys
+import os
 from docopt import docopt
 import akparser3
 
 ### GLOBALS ###
 
 args = docopt(__doc__, version="logparser3.py v0.2.2")
-args['--input'].extend(akparser3.get_log_files(args['--logdir']))
+for f_name in args['--input']:
+    if os.path.isdir(f_name):
+        list_of_log_file_names = akparser3.get_log_files((f_name, ))
+        args['--input'].extend(list_of_log_file_names)
+args['--input'] = [file_name for file_name in args['--input']\
+                                if not os.path.isdir(file_name)] 
+                                
 if len(args['--input'])>1 and args['--input'][0]==sys.stdin:
     junk = args['--input'].pop(0)
 _r_int = r = args['-r']
