@@ -35,9 +35,16 @@ Options:
   -i --input=<ifile>  Specify 0 or more input files [default: sys.stdin]
                       If any are provided, stdin is ignored.
                       These are typically log files but don't have to be.
+<<<<<<< HEAD
                       If any are directories, they will be traversed and
                       any files found with the suffix 'log' will be
                       appended the list specified by the '--input' option.
+=======
+                      If a specified file is a directory, all files
+                      with names ending in the suffix '.log' 
+                      beneath that directory are considered as though
+                      separately specified.
+>>>>>>> develop
   -o --output=<ofile>  Specify output file.  [default: stdout]
                        If none is provided, output goes to stdout.
   -f --frequency   Sort output by frequency of appearance of IPs
@@ -67,17 +74,26 @@ import akparser3
 
 ### GLOBALS ###
 
+<<<<<<< HEAD
 args = docopt(__doc__, version="logparser3.py v0.2.6")
+=======
+args = docopt(__doc__, version="logparser3.py v0.2.2")
+>>>>>>> develop
 for f_name in args['--input']:
     if os.path.isdir(f_name):
         list_of_log_file_names = akparser3.get_log_files((f_name, ))
         args['--input'].extend(list_of_log_file_names)
 args['--input'] = [file_name for file_name in args['--input']\
+<<<<<<< HEAD
                                 if not os.path.isdir(file_name)]
 
 demo_getter = akparser3.Ip_Demographics(1)  # Param controls 
                                             # which url is used.
 
+=======
+                                if not os.path.isdir(file_name)] 
+                                
+>>>>>>> develop
 if len(args['--input'])>1 and args['--input'][0]==sys.stdin:
     junk = args['--input'].pop(0)
 _r_int = r = args['-r']
