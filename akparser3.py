@@ -175,11 +175,17 @@ list_of_IPs = re.compile(ip_exp, re.VERBOSE).findall
 
 class Ip_Demographics(object):
 
+    default_url = 1
+
+    default_encoding = "utf-8"
+    charset_re = r"""\bcharset="(?P<encoding>[-\w]+)"""
+    get_encoding = re.compile(charset_re).search
+
     urls = ("hostip",
             "addgadgets",
             )
 
-    url_dict = {\
+    url_dic = {\
         urls[0] : \
             "http://api.hostip.info/get_html.php?ip={0}&position=true",
         urls[1] : \
@@ -189,96 +195,88 @@ class Ip_Demographics(object):
 #url_format_str = \
 #"http://api.hostip.info/get_html.php?ip={0}&position=true"
 
-charset_re = r"""\bcharset="(?P<encoding>[-\w]+)"""
-get_encoding = re.compile(charset_re).search
+    info_re_dic = {\
+        urls[0] : r"""
+            Country:[ ](?P<country>.*) [\n]
+            City:[ ](?P<city>.*) [\n] [\n]
+            Latitude:[ ](?P<lat>.*) [\n]
+            Longitude:[ ](?P<lon>.*) [\n]
+            IP:[ ](?P<ip>.*)
+            """                ,
+        urls[1] : r"""
+            \bcharset="(?P<encoding>[-\w]+)" .+?
+            (?P<IP>[0-9]{1,3}(?:[.][0-9]{1,3}){3}) .+?
+            Country:&nbsp;</td><td> (?P<Country>[ \w]+) .+?
+            Region:&nbsp;</td><td> (?P<Region>[ \w]+) .+?
+            City:&nbsp;</td><td> (?P<City>[ \w]+) .+?
+            Latitude:&nbsp;</td><td> (?P<Lat>[-]?[.\d]+) .+?
+            Longitude:&nbsp;</td><td> (?P<Lon>[-]?[.\d]+) .+?
+            ISP[ ]name:&nbsp;</td><td> (?P<ISP>[ .\w]+) .+?
+            Organization[ ]name:&nbsp;</td><td> (?P<OrgName>[ .\w]+)
+            """ }
 
-info_re_dict = {\
-    urls[0] : r"""
-        Country:[ ](?P<country>.*)
-        [\n]
-        City:[ ](?P<city>.*)
-        [\n]
-        [\n]
-        Latitude:[ ](?P<lat>.*)
-        [\n]
-        Longitude:[ ](?P<lon>.*)
-        [\n]
-        IP:[ ](?P<ip>.*)
-        """                ,
-    urls[1] : r"""
-        \bcharset="(?P<encoding>[-\w]+)"
-        .+?
-        (?P<IP>[0-9]{1,3}(?:[.][0-9]{1,3}){3})
-        .+?
-        Country:&nbsp;</td><td>
-        (?P<Country>[ \w]+)
-        .+?
-        Region:&nbsp;</td><td>
-        (?P<Region>[ \w]+)
-        .+?
-        City:&nbsp;</td><td>
-        (?P<City>[ \w]+)
-        .+?
-        Latitude:&nbsp;</td><td>
-        (?P<Lat>[-]?[.\d]+)
-        .+?
-        Longitude:&nbsp;</td><td>
-        (?P<Lon>[-]?[.\d]+)
-        .+?
-        ISP[ ]name:&nbsp;</td><td>
-        (?P<ISP>[ .\w]+)
-        .+?
-        Organization[ ]name:&nbsp;</td><td>
-        (?P<OrgName>[ .\w]+)
-        """
-    }
-
-    get_demographics_dict = {\
+    get_demographics_dic = {\
         urls[0] : re.compile(info_re_dic[urls[0]],
                             re.VERBOSE + re.DOTALL),
         urls[1] : re.compile(info_re_dic[urls[1]],
                             re.VERBOSE + re.DOTALL)
                             }
+    keys = ('encoding', 'err', 'IP',
+        'Country', 'Region', 'City', 'Lat', 'Lon',
+        'ISP', 'OrgName', )
+
 
 #   get_IP_demographics = re.compile(info_exp, re.VERBOSE).search
 
-    def ip_info(ip_address):
+    def __init__(self, url=Ip_Demographics.default_url)
+
+        url_template = Ip_Demographics.url_dic[url]
+
+        demographics_pattern = re.compile(\
+            Ip_Demographics.info_re_dic[urls[url]],
+            re.VERBOSE + re.DOTALL)
+
+        def ip_info(ip_address):
+            """
+        Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
+
+        Depends on http://api.hostip.info (which returns the following:
+        'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
+        38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
+        THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
+        err will empty string unless there is an urllib.request.URLError
+        in which case, it will contain the error and the other values will
+        be empty strings.
         """
-    Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
+            ret = {}
+            for key in Ip_Demographics.keys:
+                ret[key] = ""
+            try:  
+                url_response = urllib.request.urlopen(\
+                    url_template.format(ip_address))
+            except urllib.request.URLError as err_report: 
+                ret['err'] = err_report
+                return ret
 
-    Depends on http://api.hostip.info (which returns the following:
-    'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
-    38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
-    THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
-    err will empty string unless there is an urllib.request.URLError
-    in which case, it will contain the error and the other values will
-    be empty strings.
-    """
-        try:  # 16 lines in this try statement.
-            # A file-like object is returned by the request:
-            f_response =  urllib.request.urlopen(url_format_str %\
-                                           (ip_address, ))
-        except urllib.request.URLError as err_report: 
-            return {"Country" : "",
-                    "City" : "",
-                    "Lon" : "",
-                    "IP" : "",
-                    "err" : err_report              }
-        ip_metadata = str(f_response.info()) # The returned Headers.
-        encoding_group = get_encoding(ip_metadata) # Using my re function.
-        encoding = encoding_group.group("charset")
-
-        ip_demographics = f_response.read()  # The returned Data.
-        ip_demographics = ip_demographics.decode(encoding,
-                                                "backslashreplace.")
-        info = get_IP_demographics(ip_demographics)
-        return {"Country" : info.group("country"),
-                "City" : info.group("city"),
-                "Lat" : info.group("lat"),
-                "Lon" : info.group("lon"),
-                "IP" : info.group("ip"),
-                "err" : ""                           }
-    # End of IP demographics gathering section.
+            ip_demographics = url_response.read()  # The returned Data.
+            data  = ip_demographics.decode(\
+                Ip_Demographics.default_encoding, "backslashreplace.")
+            encoding = \
+                Ip_Demographics.get_encoding(data).group('encoding')
+            if not encoding:
+                encoding = Ip_Demographics_default_encoding
+            if encoding != Ip_Demographics_default_encoding:
+                data  = ip_demographics.decode(\
+                                        encoding, "backslashreplace.")
+            info = get_IP_demographics(data)
+            if info:
+                for key in ip_Demographics.keys:
+                    try:
+                        ret[key] = info.group(key)
+                    except IndexError:
+                        pass
+            return ret
+        # End of IP demographics gathering section.
 #################################################################
 
 def sortable_ip(ip):
