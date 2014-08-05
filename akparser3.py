@@ -226,58 +226,56 @@ class Ip_Demographics(object):
         'ISP', 'OrgName', )
 
 
-#   get_IP_demographics = re.compile(info_exp, re.VERBOSE).search
 
-    def __init__(self, url=Ip_Demographics.default_url)
+    def __init__(self, url=default_url):
 
-        url_template = Ip_Demographics.url_dic[url]
-
-        demographics_pattern = re.compile(\
-            Ip_Demographics.info_re_dic[urls[url]],
+        self.url_template = Ip_Demographics.url_dic[\
+                                        Ip_Demographics.urls[url]]
+        self.demographics_pattern = re.compile(\
+            Ip_Demographics.info_re_dic[Ip_Demographics.urls[url]],
             re.VERBOSE + re.DOTALL)
 
-        def ip_info(ip_address):
-            """
-        Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
-
-        Depends on http://api.hostip.info (which returns the following:
-        'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
-        38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
-        THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
-        err will empty string unless there is an urllib.request.URLError
-        in which case, it will contain the error and the other values will
-        be empty strings.
+    def ip_info(self, ip_address):
         """
-            ret = {}
-            for key in Ip_Demographics.keys:
-                ret[key] = ""
-            try:  
-                url_response = urllib.request.urlopen(\
-                    url_template.format(ip_address))
-            except urllib.request.URLError as err_report: 
-                ret['err'] = err_report
-                return ret
+    Returns a dictionary keyed by Country, City, Lat, Lon, IP  and err.
 
-            ip_demographics = url_response.read()  # The returned Data.
-            data  = ip_demographics.decode(\
-                Ip_Demographics.default_encoding, "backslashreplace.")
-            encoding = \
-                Ip_Demographics.get_encoding(data).group('encoding')
-            if not encoding:
-                encoding = Ip_Demographics_default_encoding
-            if encoding != Ip_Demographics_default_encoding:
-                data  = ip_demographics.decode(\
-                                        encoding, "backslashreplace.")
-            info = get_IP_demographics(data)
-            if info:
-                for key in ip_Demographics.keys:
-                    try:
-                        ret[key] = info.group(key)
-                    except IndexError:
-                        pass
+    Depends on http://api.hostip.info (which returns the following:
+    'Country: UNITED STATES (US)\nCity: Santa Rosa, CA\n\nLatitude:
+    38.4486\nLongitude: -122.701\nIP: 76.191.204.54\n'.)
+    THIS WILL BREAK IF THE WEB SITE CHANGES OR GOES AWAY!!!
+    err will empty string unless there is an urllib.request.URLError
+    in which case, it will contain the error and the other values will
+    be empty strings.
+    """
+        ret = {}
+        for key in Ip_Demographics.keys:
+            ret[key] = ""
+        try:  
+            url_response = urllib.request.urlopen(\
+                self.url_template.format(ip_address))
+        except urllib.request.URLError as err_report: 
+            ret['err'] = err_report
             return ret
-        # End of IP demographics gathering section.
-#################################################################
+
+        ip_demographics = url_response.read()  # The returned Data.
+        data  = ip_demographics.decode(\
+            Ip_Demographics.default_encoding, "backslashreplace.")
+        encoding = \
+            Ip_Demographics.get_encoding(data).group('encoding')
+        if not encoding:
+            encoding = Ip_Demographics.default_encoding
+        if encoding != Ip_Demographics.default_encoding:
+            data  = ip_demographics.decode(\
+                                    encoding, "backslashreplace.")
+        info = self.demographics_pattern.search(data)
+        if info:
+            for key in Ip_Demographics.keys:
+                try:
+                    ret[key] = info.group(key)
+                except IndexError:
+                    pass
+        return ret
+# End of IP demographics gathering section.
 
 def sortable_ip(ip):
     """Takes am IP address of the form 50.143.75.105
@@ -382,6 +380,7 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
     else:
         target = t2
 
+    demo_getter = Ip_Demographics(1)
     n = 0
     for line in target.split('\n'):
         if line:
@@ -390,12 +389,13 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
             print("Analysing line #%03d:\n%s" % (n, line, ))
             print("  Sortable date: %s." % (sortable_date(line), ))
             ip = list_of_IPs(line)
+            ###############
             info = get_log_info(line)
             print("      Information gleaned: %s"%(info, ) )
 
             if ip: # The following 'exercises' IP_info() """
                 for addr in ip:
-                    response = ip_info(addr) 
+                    response = demo_getter.ip_info(addr) 
                     if response['err']:
                         print\
                         ("Attempt to retrieve demographics failed with '{0}'."\
