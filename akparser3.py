@@ -14,35 +14,38 @@ A module to support parsing of log files.
 Parses log files:  To date, can handle:
         auth.log   and 
         fail2ban.log  .
-Other logs can be added by request to author. (See (c) statement.)
+Other logs can be added by request to author.
 
 Usage: 
     import akparser3
     ...
     Provides the following:  i.e. Here is the API.
 
-    ip_info(ip_address)
-        # Returns   a dictionary keyed by
-        # 'Country', 'City', 'Lat', 'Lon', 'IP'
-        # TO DO: provide error checking.
+    Ip_Demographics
+        A class, which provides the following:
+    Ip_Demographics.ip_info(ip_address)
+        Returns   a dictionary keyed by
+            'encoding', 'err', 'IP',
+            'Country', 'Region', 'City', 'Lat', 'Lon',
+            'ISP', 'OrgName'
     list_of_IPs(line)
-        # An re.compile(..).findall function
-        # Returns a list.  (i.e. Allows input to contain >1 IP/line.)
-        # Generally log files report only one IP per line unless a 
-        # reverse look up is provided in which case the second one
-        # is the same IP but with the dotted quads in reverse order.
-    line_types: a list of strings. Provides our SPoL [1]
+        An re.compile(..).findall function
+        Returns a list.  (i.e. Allows input to contain >1 IP/line.)
+        Generally log files report only one IP per line unless a 
+        reverse look up is provided in which case the second one
+        is the same IP but with the dotted quads in reverse order.
+    line_types: a list of strings. Provides our SPoT (or DRY.)
     get_log_info(line)
-        # Returns a tuple: line_type, data_gleaned.  
-        #     line_type: one of the strings provided in line_types.
-        #     data_gleaned: a list, possibly empty.
-        #          Currently there is never >1 item in the list.
-        # Returns None if line is not a recognized log entry.
+        Returns a tuple: line_type, data_gleaned.  
+            line_type: one of the strings provided in line_types.
+            data_gleaned: a list, possibly empty.
+                 Currently there is never >1 item in the list.
+        Returns None if line is not a recognized log entry.
     get_header_text(line_type)  
-        # line_type: one of the strings provided in line_types.
-        # Returns a string thus providing a mechanism for providing 
-        # line_type specific information: this might be useful when 
-        # presenting output.
+        line_type: one of the strings provided in line_types.
+        Returns a string thus providing a mechanism for providing 
+        line_type specific information: this might be useful when 
+        presenting output.
     get_log_files(dir_iterable)
         # accepts an iterable of directory names.
         # returns a list of all file names containing '.log'.
@@ -72,7 +75,7 @@ __all__ = ['list_of_IPs',
           'sortable_date',
           'sortable_ip'
           ]
-__version__ = '0.2.5'
+__version__ = '0.2.6'
 
 import re
 import os
@@ -221,7 +224,7 @@ class Ip_Demographics(object):
         urls[1] : re.compile(info_re_dic[urls[1]],
                             re.VERBOSE + re.DOTALL)
                             }
-    keys = ('encoding', 'err', 'IP',
+    demo_keys = ('encoding', 'err', 'IP',
         'Country', 'Region', 'City', 'Lat', 'Lon',
         'ISP', 'OrgName', )
 
@@ -248,7 +251,7 @@ class Ip_Demographics(object):
     be empty strings.
     """
         ret = {}
-        for key in Ip_Demographics.keys:
+        for key in Ip_Demographics.demo_keys:
             ret[key] = ""
         try:  
             url_response = urllib.request.urlopen(\
@@ -269,7 +272,7 @@ class Ip_Demographics(object):
                                     encoding, "backslashreplace.")
         info = self.demographics_pattern.search(data)
         if info:
-            for key in Ip_Demographics.keys:
+            for key in Ip_Demographics.demo_keys:
                 try:
                     ret[key] = info.group(key)
                 except IndexError:
