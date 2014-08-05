@@ -230,7 +230,6 @@ class IP_Class (object):
         <data_gleaned> is None if no data exists, or a list if it does.
         This method populates 'other'.
         """
-        #print("add_other() received {0}".format(args) )
         if not args:
             args = (_unclassified_IP_indicator, None, )
         if not args[1]:
@@ -281,18 +280,14 @@ def process(line, f_type, f_name):
     global f_status_dic 
     global ipDic
     ip_list = akparser3.list_of_IPs(line)
-    #print("process() got the following IPs: {0}.".format(ip_list) )
     if ip_list:
         if (f_type == lf) and (len(ip_list)>1):  
             # Get rid of reverse look up version of IP.
             ip_list = [ip_list[1]]
-            #print("..and changed it to {0}".format(ip_list) )
         for ip in ip_list:
             junk = f_status_dic.setdefault(f_type, {})
             junk = f_status_dic[f_type].setdefault(f_name, 0)
             f_status_dic[f_type][f_name] += 1
-            #print("Incrimenting '{0}'/'{1}' f_status_dic.".\
-                        #format(f_type, f_name) )
             
             junk = ipDic.setdefault(ip, {})
             junk = ipDic[ip].setdefault(f_type, {})
@@ -300,8 +295,6 @@ def process(line, f_type, f_name):
                 other = akparser3.get_log_info(line)  # Data entered ...
                 junk = ipDic[ip][f_type].setdefault(f_name, IP_Class(ip) )
                 ipDic[ip][f_type][f_name].increment()
-                #print("Incrimenting '{0}'/'{1}' ipDic.".\
-                        #format(f_type, f_name) )
                 ipDic[ip][f_type][f_name].add_other(other)  # & here.
             else:   # f_type is white or black file: just increment.
                 junk = ipDic[ip][f_type].setdefault(f_name, 0)
@@ -405,11 +398,10 @@ def remove_overlaps_report(sets, output_set, r, d):
 
 ####***************  __main__  begins here.  ***************#####
 
-print(args)  ### Comment out after debugging.
+#print(args)  ### Comment out after debugging.
 
 for arg_file_type in arg_file_types:
     for f_name in args[arg_file_type]:
-        #print("Processing f_name: '{0}'".format(f_name) )
         if f_name == 'sys.stdin':
             f = sys.stdin
         else:
@@ -425,8 +417,6 @@ for arg_file_type in arg_file_types:
         if f_name != 'sys.stdin':
             f.close()
         success_list.append(f_name)
-
-# print(f_status_dic)
 
 if success_list and not q:
     success_report += \
@@ -456,7 +446,13 @@ if v:
     report += duplicate_deletion_report
 
 report += '\n## MAIN BODY of OUTPUT ##\n'
-report += "__ IP Address __  _ # _   _Line Type  +/- extra info\n"
+if r>1:
+    report += "__ IP Address __  _ # _   _Line Type_  +/- extra info\n"
+elif r==1:
+    report += "__ IP Address __  _ # _\n"
+else:
+    report += "__ IP Address __\n"
+
 ips = list(output_set)
 if f:
     ips.sort(key=order_by_frequency, reverse=True)
