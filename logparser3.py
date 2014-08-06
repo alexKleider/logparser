@@ -35,16 +35,10 @@ Options:
   -i --input=<ifile>  Specify 0 or more input files [default: sys.stdin]
                       If any are provided, stdin is ignored.
                       These are typically log files but don't have to be.
-<<<<<<< HEAD
-                      If any are directories, they will be traversed and
-                      any files found with the suffix 'log' will be
-                      appended the list specified by the '--input' option.
-=======
                       If a specified file is a directory, all files
                       with names ending in the suffix '.log' 
                       beneath that directory are considered as though
                       separately specified.
->>>>>>> develop
   -o --output=<ofile>  Specify output file.  [default: stdout]
                        If none is provided, output goes to stdout.
   -f --frequency   Sort output by frequency of appearance of IPs
@@ -74,33 +68,26 @@ import akparser3
 
 ### GLOBALS ###
 
-<<<<<<< HEAD
 args = docopt(__doc__, version="logparser3.py v0.2.6")
-=======
-args = docopt(__doc__, version="logparser3.py v0.2.2")
->>>>>>> develop
+
 for f_name in args['--input']:
     if os.path.isdir(f_name):
         list_of_log_file_names = akparser3.get_log_files((f_name, ))
         args['--input'].extend(list_of_log_file_names)
 args['--input'] = [file_name for file_name in args['--input']\
-<<<<<<< HEAD
                                 if not os.path.isdir(file_name)]
 
-demo_getter = akparser3.Ip_Demographics(1)  # Param controls 
-                                            # which url is used.
+demographics_getter = akparser3.IpDemographics(1)  # Param controls 
+                                           # which url is used.
 
-=======
-                                if not os.path.isdir(file_name)] 
-                                
->>>>>>> develop
 if len(args['--input'])>1 and args['--input'][0]==sys.stdin:
     junk = args['--input'].pop(0)
-_r_int = r = args['-r']
-_d_bool = d = args['--demographics']
-_q_bool = q = args['--quiet']
-_v_bool = v = args['--verbose']
-_f_bool = f = args['--frequency']
+
+#_r_int = r = args['-r']                #  Working to
+#_d_bool = d = args['--demographics']   #  remove 
+#_q_bool = q = args['--quiet']          #  these
+#_v_bool = v = args['--verbose']        #  five
+#_f_bool = f = args['--frequency']      #  assignments.
 
 # input file type (itype) can be 'lf', 'wf', or 'bf' (input, white, black)
 arg_file_types = [ "--input", "--white", "--black" ]
@@ -121,7 +108,7 @@ f_status_dic = {lf:{}, wf:{}, bf:{}}
 #f_status_dic{ } { } counter
 #This keeps track of total number of IP addresses (including duplicates)
 #found in each of the files processed.
-#This information is used by empties_report()
+#This information is used by report_empties()
 
 
 ipDic = { }  #     !! ALL DATA !!
@@ -140,8 +127,8 @@ ipDic = { }  #     !! ALL DATA !!
 _unclassified_IP_indicator = 'solo-IP'
 _absence_of_entry_indicator = '-'   ##### NOT BEING USED???
 
-err_message_list = []
-success_list = []
+err_message_list = []  # Files => access errors added here.
+success_list = []  # Keep track of successfully opened files.
 success_report = ''
 debug_report ="DEBUGGING REPORT:"
 def debug_append(s):
@@ -163,14 +150,13 @@ class IP_Class (object):
     and self.add_other() which inserts it into an instance of IP_Class.
     """
 
-    #def __init__(self, ip, other=None):
     def __init__(self, ip):
         self.ip = ip
         self.n = 0
         self.other = {}
 #        if other == None:
 #            self.other = {}   # Dictionary to be keyed by an item found in
-#                # akparser3.line_types or by <_unclassified_IP_indicator>
+#                # akparser3.LINE_TYPES  or by <_unclassified_IP_indicator>
 #                # If the later or a former which has no additional data,
 #                # the value is a counter.  Otherwise a list of lists
 #                # containing the data.
@@ -180,10 +166,9 @@ class IP_Class (object):
     def display(self, r, d):
         """ What we choose to display depends on params 'r' and 'd'.
 
-        [1] args["-r"] provided as parameter 'r', which is 
-        an integer between 0 and 2 inclusive,          and 
-        [2] args["--demographics"] provided as parameter 'd', 
-        a Boolean."""
+        [1] args["-r"] provided as parameter 'r', 
+        [2] args["--demographics"] provided as parameter 'd'
+        """
         report = \
         '{0: ^16}  {{0: ^5}}\n{{1}}{{2}}'.format(self.ip, self.n)
     #     ^          ^          ^    ^  
@@ -195,9 +180,9 @@ class IP_Class (object):
         occurences_report = ''
         additional_report = ''
         demographic_report = ''
-        if r:  # r > 0          
+        if args['-r']:  # r > 0          
             occurences_report = str(self.n)
-        if r >=2:
+        if args['-r'] >= 2:
             key_list = list(self.keys())
             key_list.sort()
             for line_type in key_list:
@@ -205,16 +190,20 @@ class IP_Class (object):
                                             format(line_type)
                 if type(self.other[line_type])==int:
                     additional_report = \
-                                additional_report.format(self.other[line_type])
+                        additional_report.format(self.other[line_type])
                 else:
+                    #   vvvv  change this to shorten output vvvv
                     n = 0
                     for item in self.other[line_type]:
                         additional_report += "{0: >51}\n".format(item)
                         n += 1
+                    #   ^^^^ change the above to shorten output ^^^^
                     additional_report = additional_report.format(n)
-        if d:
-            demographic_report = "\t{0[Country]}  {0[City]}\n".format\
-                                            (demo_getter.ip_info(self.ip))
+        if args['--demographics']:
+            # latitude, longitude &/or ISP could be provided as well:
+            demographic_report = \
+                "\t{0[Country]} {0[Region]} {0[City]}\n\t{0[ISP]}\n".format\
+                            (demographics_getter.ip_info(self.ip))
         report = report.format(occurences_report,  # {0}
                                demographic_report, # {1}
                                additional_report)  # {2}
@@ -262,18 +251,6 @@ class IP_Class (object):
             junk = self.other.setdefault(args[0], [])
             self.other[args[0]].append(args[1])
 
-    def get_log_count(self):  # Shouldn't be necessary, already in self.n
-        global debug_report 
-        debug_report += "{0} <self.other> is {1}\n".\
-                                format(self.ip, self.other) 
-        n = 0
-        for item in self.other:
-            if type(self.other[item])==int:
-                n += self.other[item]
-            else:
-                n += len(self.other[item])
-        return n
-
     def keys(self):
         return list(self.other)
 
@@ -291,18 +268,19 @@ def order_by_frequency(ip):
     n =  0
     for file_name in ipDic[ip][lf]:
         n += ipDic[ip][lf][file_name].how_many()
-        # c += ipDic[ip][lf][file_name].get_log_count()
     return (n, ip, )
 
 def process(line, f_type, f_name):
     """This function populates f_status_dic and ipDic.
+
     i.e. it HAS SIDE EFFECTS on those two globals. 
     It ignores lines that do not contain an IP address but by the same
     token, it can be assumed that if there is any action, it is because an
-    IP address exists in the line."""
+    IP address exists in the line.
+    """
     global f_status_dic 
     global ipDic
-    ip_list = akparser3.list_of_IPs(line)
+    ip_list = akparser3.LIST_OF_IPS(line)
     if ip_list:
         if (f_type == lf) and (len(ip_list)>1):  
             # Get rid of reverse look up version of IP.
@@ -323,7 +301,7 @@ def process(line, f_type, f_name):
                 junk = ipDic[ip][f_type].setdefault(f_name, 0)
                 ipDic[ip][f_type][f_name] += 1
 
-def empties_report(f_status_dic):
+def report_empties(f_status_dic):
     """ Returns a report of input files containing no IP addresses.
     
     Returns empty string if none found."""
@@ -340,9 +318,11 @@ def empties_report(f_status_dic):
     return ret
 
 def create_sets_by_tuple(ipDic):
-    """Returns a dictionary of sets, 
-    one for each (f_type, f_name, ) combination and 
-    containing the IPs gleaned from that particular file."""
+    """Returns a dictionary with values as sets, 
+    keyed by (f_type, f_name, ) tuples. 
+    The sets contain the IPs gleaned from that 
+    particular file.
+    """
     sets = {} 
     for ip in ipDic:
         for f_type in ipDic[ip]:
@@ -378,7 +358,7 @@ def create_output_class_list(output_collection):
         output_list.append(item_4_list)
     return output_list
 
-def remove_overlaps_report(sets, output_set, r, d):
+def remove_and_report_overlaps(sets, output_set, r, d):
     """Returns report of overlapping IPs; removes them from output_set.
     
     Checks for IPs in output_set that are also in white or black input 
@@ -441,7 +421,9 @@ for arg_file_type in arg_file_types:
             f.close()
         success_list.append(f_name)
 
-if success_list and not q:
+# Begin Report Creation:
+# First: report successfully opened files.
+if success_list and not args['--quiet']:
     success_report += \
     '\nThe following files were successfully opened for input:\n'
     for f_name in success_list:
@@ -450,41 +432,43 @@ if success_list and not q:
 
 report = '## LogParse REPORT ##\n{0}'.format(success_report)
 
-if not q:
-    # report non-existent files.
+if not args['--quiet']:
+    # report file access errors
     if err_message_list:
         report += '\nFILE ACCESS ERRORS:\n'
         for message in err_message_list:
             report += '{0}\n'.format(message)
         report += 'End of file access errors report.\n'
     # report files devoid of IP addresses.
-    report += '{0}\n'.format(empties_report(f_status_dic))
+    report += '{0}\n'.format(report_empties(f_status_dic))
 
 sets_by_tuple =  create_sets_by_tuple(ipDic)
-output_set = raw_output_set(sets_by_tuple)  # Likely modified by next line.
+output_set = raw_output_set(sets_by_tuple)  
+# The above is likely modified by next line.
 duplicate_deletion_report = \
-            remove_overlaps_report(sets_by_tuple, output_set, r, d)
-if v:
+            remove_and_report_overlaps(sets_by_tuple, output_set, 
+                args['-r'], args['--demographics'])
+if args['--verbose']:
     # report 'white' or 'black' IPs removed from output.
     report += duplicate_deletion_report
 
 report += '\n## MAIN BODY of OUTPUT ##\n'
-if r>1:
+if args['-r'] > 1:
     report += "__ IP Address __  _ # _   _Line Type_  +/- extra info\n"
-elif r==1:
+elif args['-r'] == 1:
     report += "__ IP Address __  _ # _\n"
 else:
     report += "__ IP Address __\n"
 
 ips = list(output_set)
-if f:
+if args['--frequency']:
     ips.sort(key=order_by_frequency, reverse=True)
 else:
     ips.sort(key=akparser3.sortable_ip)
 class_list = create_output_class_list(ips)
 
 for instance in class_list:
-    report += instance.display(r, d)
+    report += instance.display(args['-r'], args['--demographics'])
 
 if args["--output"]=='stdout':
     outF = sys.stdout
@@ -501,11 +485,10 @@ outF.write(report)
 outF.write("\n{0}\n".format(debug_report))
 outF.close()
 
-notes =\
-"""
+notes = """
 # After input is collected must process:
 # 1. keep track of any absent (err_message_list = [<list>])
-                    or devoid of IPs (empties_report) files.
+                    or devoid of IPs (report_empties) files.
 # 2. keep track of any 'white' or 'black' IPs removed from output.
 # 3. Only if '-r'>=2: check for category in input.
 # and then ...
@@ -525,7 +508,7 @@ notes =\
 
 IP_Class provides:
   * a counter accessible using methods incriment() and how_many()
-  * 'other' which is a dictionary keyed by line_types
+  * 'other' which is a dictionary keyed by LINE_TYPES 
      with values which are lists of lists containing log info.
      These a accessed using methods
      add_other(tuple: (log_entry_type, list_of_values, ) )
@@ -535,18 +518,13 @@ IP_Class provides:
         # one list for each instance of the key found 
         # in the log files.
 
-empties_report() Reports files devoid of IP addresses. 
+report_empties() Reports files devoid of IP addresses. 
 create_sets_by_tuple()  dictionary keyed by (f_type, f_name, )
                           vaues are sets of IP addresses.
 raw_output_set(sets) Returns the set of IPs in input/log files.
-remove_overlaps_report(sets, ouput_set, r, d):
+remove_and_report_overlaps(sets, ouput_set, r, d):
     Checks to see if any IPs already in white or black input files 
     appear in the proposed output_set. Any such IPs are reported and 
     removed from output_set. Returned is either the report, or None.
-"""
-"""
-traverse through command line file arguments:
-arg_file_type in arg_file_types:
-    for f_name in args[arg_file_type]:
 """
 
