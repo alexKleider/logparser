@@ -21,28 +21,28 @@ Usage:
     ...
     Provides the following:  i.e. Here is the API.
 
-    Ip_Demographics
+    IpDemographics
         A class, which provides the following:
-    Ip_Demographics.ip_info(ip_address)
+    IpDemographics.ip_info(ip_address)
         Returns   a dictionary keyed by
             'encoding', 'err', 'IP',
             'Country', 'Region', 'City', 'Lat', 'Lon',
             'ISP', 'OrgName'
-    list_of_IPs(line)
+    LIST_OF_IPS(line)
         An re.compile(..).findall function
         Returns a list.  (i.e. Allows input to contain >1 IP/line.)
         Generally log files report only one IP per line unless a 
         reverse look up is provided in which case the second one
         is the same IP but with the dotted quads in reverse order.
-    line_types: a list of strings. Provides our SPoT (or DRY.)
+    LINE_TYPES : a list of strings. Provides our SPoT (or DRY.)
     get_log_info(line)
         Returns a tuple: line_type, data_gleaned.  
-            line_type: one of the strings provided in line_types.
+            line_type: one of the strings provided in LINE_TYPES .
             data_gleaned: a list, possibly empty.
                  Currently there is never >1 item in the list.
         Returns None if line is not a recognized log entry.
     get_header_text(line_type)  
-        line_type: one of the strings provided in line_types.
+        line_type: one of the strings provided in LINE_TYPES .
         Returns a string thus providing a mechanism for providing 
         line_type specific information: this might be useful when 
         presenting output.
@@ -66,9 +66,9 @@ Usage:
 
 """
 
-__all__ = ['list_of_IPs', 
-          'Ip_Demographics',
-          'line_types',
+__all__ = ['LIST_OF_IPS', 
+          'IpDemographics',
+          'LINE_TYPES ',
           'get_log_info',
           'get_header_text',
           'get_log_files',
@@ -82,78 +82,78 @@ import os
 import urllib.request
 import datetime
 
-line_types = ['invalid_user',   'no_id',     'break_in', 
+LINE_TYPES  = ['invalid_user',   'no_id',     'break_in', 
               'pub_key',        'closed',    'disconnect', 
               'listening',      'ban',       'unban', 
               'already_banned'                            ]
-# BEGINNING of SECTION which DEPENDS on line_types
+# BEGINNING of SECTION which DEPENDS on LINE_TYPES 
 # and therefore will have to be modified if any 
-# changes are made to line_types.
-re_format = {}         # } All keyed
-re_search4 = {}        # } by items
-keys_provided = {}     # } found in
-header_text = {}       # } 'line_types'.
+# changes are made to LINE_TYPES .
+RE_FORMAT = {}         # } All keyed
+RE_SEARCH4 = {}        # } by items
+KEYS_PROVIDED = {}     # } found in
+HEADER_TEXT = {}       # } 'LINE_TYPES '.
 
 # Expressions relevant to auth.log:
-re_format["invalid_user"] = \
+RE_FORMAT["invalid_user"] = \
     r"""Invalid user (?P<user>\S+) from """
-header_text["invalid_user"] = "'auth.log' reporting 'invalid user's:"
-re_format["no_id"] = \
+HEADER_TEXT["invalid_user"] = "'auth.log' reporting 'invalid user's:"
+RE_FORMAT["no_id"] = \
     r"""Did not receive identification string from \S+"""
-header_text["no_id"] = "'auth.log' reporting 'no id's:"
-re_format["break_in"] = r"POSSIBLE BREAK-IN ATTEMPT!"
-header_text["break_in"] = \
+HEADER_TEXT["no_id"] = "'auth.log' reporting 'no id's:"
+RE_FORMAT["break_in"] = r"POSSIBLE BREAK-IN ATTEMPT!"
+HEADER_TEXT["break_in"] = \
     "'auth.log' reporting 'POSSIBLE BREAK-IN ATTEMPT!'s:"
-re_format["pub_key"] = r""" Accepted publickey for (?P<user>\S+)"""
-header_text["pub_key"] = "'auth.log' reporting ''s:"
-re_format["closed"] = r""" Connection closed by \S+"""
-header_text["closed"] = "'auth.log' reporting 'closed's:"
-re_format["disconnect"] = r""" Received disconnect from (?P<who>[.\w+]):"""
-header_text["disconnect"] = \
+RE_FORMAT["pub_key"] = r""" Accepted publickey for (?P<user>\S+)"""
+HEADER_TEXT["pub_key"] = "'auth.log' reporting ''s:"
+RE_FORMAT["closed"] = r""" Connection closed by \S+"""
+HEADER_TEXT["closed"] = "'auth.log' reporting 'closed's:"
+RE_FORMAT["disconnect"] = r""" Received disconnect from (?P<who>[.\w+]):"""
+HEADER_TEXT["disconnect"] = \
     "'auth.log' reporting 'Received disconnect from's:"
-re_format["listening"] = r""" Server listening on (?P<listener>.+)"""
-header_text["listening"] = "'auth.log' reporting 'Server listening on's:"
+RE_FORMAT["listening"] = r""" Server listening on (?P<listener>.+)"""
+HEADER_TEXT["listening"] = "'auth.log' reporting 'Server listening on's:"
 
 # fail2ban.log lines:
-re_format["ban"] = \
+RE_FORMAT["ban"] = \
     r"fail2ban\.actions: WARNING \[ssh\] Ban "
-header_text["ban"] = "'fail2ban' reporting 'ban's:"
-re_format["unban"] = \
+HEADER_TEXT["ban"] = "'fail2ban' reporting 'ban's:"
+RE_FORMAT["unban"] = \
     r"fail2ban\.actions: WARNING \[ssh\] Unban "
-header_text["unban"] = "'fail2ban' reporting 'unban's:"
-re_format["already_banned"] = r" already banned$"
-header_text["already_banned"] = "'fail2ban' reporting 'already banned's:"
-# SECTION which DEPENDS on 'line_types' CONTINUES...
-for key in line_types:
-    re_search4[key] = re.compile(re_format[key]).search
+HEADER_TEXT["unban"] = "'fail2ban' reporting 'unban's:"
+RE_FORMAT["already_banned"] = r" already banned$"
+HEADER_TEXT["already_banned"] = "'fail2ban' reporting 'already banned's:"
+# SECTION which DEPENDS on 'LINE_TYPES ' CONTINUES...
+for key in LINE_TYPES :
+    RE_SEARCH4[key] = re.compile(RE_FORMAT[key]).search
 
-keys_provided["invalid_user"] = ["user"]
-keys_provided["no_id"] = []
-keys_provided["break_in"] = []
-keys_provided["pub_key"] = ["user"]
-keys_provided["closed"] = []
-keys_provided["disconnect"] = ["who"]
-keys_provided["listening"] = ["listener"]
+KEYS_PROVIDED["invalid_user"] = ["user"]
+KEYS_PROVIDED["no_id"] = []
+KEYS_PROVIDED["break_in"] = []
+KEYS_PROVIDED["pub_key"] = ["user"]
+KEYS_PROVIDED["closed"] = []
+KEYS_PROVIDED["disconnect"] = ["who"]
+KEYS_PROVIDED["listening"] = ["listener"]
 
-keys_provided["ban"] = []
-keys_provided["unban"] = []
-keys_provided["already_banned"] = []
-# END of SECTION which DEPENDS on 'line_types'.
+KEYS_PROVIDED["ban"] = []
+KEYS_PROVIDED["unban"] = []
+KEYS_PROVIDED["already_banned"] = []
+# END of SECTION which DEPENDS on 'LINE_TYPES '.
 
 def get_header_text(line_type):
     """Return header text appropriate to line type."""
-    return header_text[line_type]
+    return HEADER_TEXT[line_type]
 
 def get_log_info(line):
     """Returns 'None' if not a recognized log entry  or
     a tuple: line_type, data_gleaned.  The later is a list if
     there is data gleaned, None if not.
     """
-    for line_type in line_types:  # Assume a line can only be of 1 type.
-        search_result = re_search4[line_type](line)
+    for line_type in LINE_TYPES :  # Assume a line can only be of 1 type.
+        search_result = RE_SEARCH4[line_type](line)
         if search_result:
             data_gleaned = []
-            info_provided = keys_provided[line_type]
+            info_provided = KEYS_PROVIDED[line_type]
             if info_provided:  # Possibly empty list, unlikely >1 item.
                 for item in info_provided:
                     data_gleaned.append(search_result.groups(item))
@@ -165,18 +165,28 @@ def get_log_info(line):
 #################################################################
 
 # To identify IP addresses (ipv4.)
-ip_exp = \
+IP_EXP = \
 r"""
 \b
 \d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}
 """
-list_of_IPs = re.compile(ip_exp, re.VERBOSE).findall
+LIST_OF_IPS = re.compile(IP_EXP, re.VERBOSE).findall
 # list_of_Ips(line) returns a list (could be empty) of IP addresses.
 
 #################################################################
 # To get demographic info regarding an IP address:
 
-class Ip_Demographics(object):
+class IpDemographics(object):
+
+    """A class to facilitate being able to easily switch from using one url
+    for IP demographic information, to another. An instance can be used to
+    gain its ip_info method which takes an IP address and returns
+    information about it (if available) and any error message if present.
+    The encoding used by the web site is also reported (with utf-8 as the
+    default.)
+    A default URL (index to) is set but can be over-ridden by an integer
+    parameter when initializing.
+    """
 
     default_url = 1
 
@@ -232,10 +242,10 @@ class Ip_Demographics(object):
 
     def __init__(self, url=default_url):
 
-        self.url_template = Ip_Demographics.url_dic[\
-                                        Ip_Demographics.urls[url]]
+        self.url_template = IpDemographics.url_dic[\
+                                        IpDemographics.urls[url]]
         self.demographics_pattern = re.compile(\
-            Ip_Demographics.info_re_dic[Ip_Demographics.urls[url]],
+            IpDemographics.info_re_dic[IpDemographics.urls[url]],
             re.VERBOSE + re.DOTALL)
 
     def ip_info(self, ip_address):
@@ -251,7 +261,7 @@ class Ip_Demographics(object):
     be empty strings.
     """
         ret = {}
-        for key in Ip_Demographics.demo_keys:
+        for key in IpDemographics.demo_keys:
             ret[key] = ""
         try:  
             url_response = urllib.request.urlopen(\
@@ -262,17 +272,17 @@ class Ip_Demographics(object):
 
         ip_demographics = url_response.read()  # The returned Data.
         data  = ip_demographics.decode(\
-            Ip_Demographics.default_encoding, "backslashreplace.")
+            IpDemographics.default_encoding, "backslashreplace.")
         encoding = \
-            Ip_Demographics.get_encoding(data).group('encoding')
+            IpDemographics.get_encoding(data).group('encoding')
         if not encoding:
-            encoding = Ip_Demographics.default_encoding
-        if encoding != Ip_Demographics.default_encoding:
+            encoding = IpDemographics.default_encoding
+        if encoding != IpDemographics.default_encoding:
             data  = ip_demographics.decode(\
                                     encoding, "backslashreplace.")
         info = self.demographics_pattern.search(data)
         if info:
-            for key in Ip_Demographics.demo_keys:
+            for key in IpDemographics.demo_keys:
                 try:
                     ret[key] = info.group(key)
                 except IndexError:
@@ -293,21 +303,21 @@ def sortable_ip(ip):
 
 # Some date routines to provide sortable_date().
 
-ThisYear = datetime.date.today().year
-ThisMonth = datetime.date.today().month
+THISYEAR = datetime.date.today().year
+THISMONTH = datetime.date.today().month
 
-def _sampleYR(samplemonth):
+def _sample_yr(samplemonth):
     """ auth.log provides date without the year 
         so we have to "guess."  """
-    tmonth = ThisMonth
+    tmonth = THISMONTH
     while tmonth > 0:
         if samplemonth == tmonth:
-            return ThisYear
+            return THISYEAR
         tmonth -= 1
-    return ThisYear -1
+    return THISYEAR -1
 
 
-months = {"Jan" : 1, "Feb" : 2, "Mar" : 3, "Apr" : 4,
+MONTHS = {"Jan" : 1, "Feb" : 2, "Mar" : 3, "Apr" : 4,
           "May" : 5, "Jun" : 6, "Jul" : 7, "Aug" : 8,
           "Sep" : 9, "Oct" : 10, "Nov" : 11, "Dec" : 12  }
 
@@ -318,16 +328,16 @@ def sortable_date(log_line):
     try:   # auth.log 
         l = log_line[:15].split()
         return  "%s-%02d-%02d %s" % \
-            (_sampleYR(int(months[l[0]])), 
-            months[l[0]], 
+            (_sample_yr(int(MONTHS[l[0]])), 
+            MONTHS[l[0]], 
             int(l[1]), l[2], )
-    except:
-        failed = True
+    except:   # TypeError or IndexError
+        pass  # I want ANY error to pass
     try:  # fail2ban.log
         l = log_line[:10].split('-')
-        return "%s-%s-%s %s" %\
+        return "%s-%s-%s %s" % \
             (l[0], l[1], l[2], log_line[11:19], )
-    except:
+    except:  # Ditto, this might deserve further discussion.
         return
 
 def get_log_files(dir_iterable):
@@ -339,11 +349,11 @@ def get_log_files(dir_iterable):
     """
     log_files = []
     for directory in dir_iterable:
-        for dir_name, dir_list, file_list in os.walk(directory):
+        for dir_name, _, file_list in os.walk(directory):
             for file_name in file_list:
                 if '.log' in file_name:
                     d_n = dir_name
-                    while d_n[-1:]=='/':  # To eliminate double slashes.
+                    while d_n[-1:] == '/':  # To eliminate double slashes.
                         d_n = d_n[0:-1]
                     log_files.append('{0}/{1}'.format(d_n, file_name))
 
@@ -351,8 +361,9 @@ def get_log_files(dir_iterable):
                     #print("\t{0}".format(l1))
     return log_files
 
-if __name__=="__main__":
-    print("Running Python3 script: 'akparser3.py'.......")
+def main():
+    """ Testing code. """
+
     import sys
     t2 = \
 """Dec 23 05:17:01 localhost CRON[17407]: pam_unix(cron:session): session closed for user root
@@ -383,7 +394,7 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
     else:
         target = t2
 
-    demo_getter = Ip_Demographics(1)
+    demo_getter = IpDemographics(1)
     n = 0
     for line in target.split('\n'):
         if line:
@@ -391,7 +402,7 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
             print()
             print("Analysing line #%03d:\n%s" % (n, line, ))
             print("  Sortable date: %s." % (sortable_date(line), ))
-            ip = list_of_IPs(line)
+            ip = LIST_OF_IPS(line)
             ###############
             info = get_log_info(line)
             print("      Information gleaned: %s"%(info, ) )
@@ -472,3 +483,8 @@ Dec 22 22:18:12 localhost sshd[17242]: Invalid user devtest from 133.242.167.91
     log_files = get_log_files(params)
     for log_file in log_files:
         print(log_file)
+
+
+
+if __name__ == "__main__":
+    main()
